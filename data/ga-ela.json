@@ -1,0 +1,28 @@
+[
+  {
+    "grade": "Grade 3",
+    "strand": "Reading Literary",
+    "code": "ELAGSE3RL1",
+    "description": "Ask and answer questions to demonstrate understanding of a text, referring explicitly to the text as the basis for the answers.",
+    "details": "Students cite specific parts of the text when explaining their answers to questions about key details.",
+    "ALD": "Developing: answers literal questions with general references; Proficient: answers literal and inferential questions with explicit references; Distinguished: synthesizes across sections with precise evidence.",
+    "evidence": "Evidence statement notes: references should include sentence or paragraph identifiers when available.",
+    "samples": [
+      "SR: Which detail best supports the idea that…?",
+      "EBSR: Select the sentence that best supports your answer to Part A."
+    ]
+  },
+  {
+    "grade": "Grade 5",
+    "strand": "Reading Literary",
+    "code": "ELAGSE5RL1",
+    "description": "Quote accurately from a text when explaining what the text says explicitly and when drawing inferences from the text.",
+    "details": "Emphasis on accurate quoting and clear linkage between evidence and inference.",
+    "ALD": "Developing: cites general parts; Proficient: quotes accurately and links to inference; Distinguished: integrates multiple quotations to support a claim.",
+    "evidence": "Student responses include quotation marks and minimal ellipses with accurate attribution.",
+    "samples": [
+      "EBSR: Choose two quotes that best support the inference in Part A.",
+      "SR: Which quotation best shows that the narrator is uncertain?"
+    ]
+  }
+]
