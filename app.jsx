@@ -57,6 +57,13 @@ const STRAND_ORDER = [
 
 const getGradeNumber = (gradeLabel) => parseInt(String(gradeLabel).match(/\d+/)?.[0] || "0", 10);
 const ITEMS_PER_STRAND = 24;
+const getCourseBucket = (gradeLabel) => {
+  const g = String(gradeLabel);
+  if (g === "Kindergarten" || /^Grade\s*[1-5]\b/.test(g)) return "Elementary K-5";
+  if (/^Grade\s*[6-8]\b/.test(g)) return "Middle 6-8";
+  if (/Literature\s*&\s*Composition/i.test(g)) return "Lit & Comp I-IV";
+  return "Other";
+};
 
 const parseCode = (code) => {
   const match = String(code).toUpperCase().match(/^ELAGSE\d+([A-Z]+)(\d+)$/);
@@ -92,7 +99,7 @@ function useData() {
   return { data, loadedFromJson };
 }
 
-function useFilteredData(data, query, grade, selectedStrand, selectedCodeForProgression) {
+function useFilteredData(data, query, grade, selectedStrand, selectedBucket, selectedCodeForProgression) {
   return useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = data;
@@ -103,6 +110,10 @@ function useFilteredData(data, query, grade, selectedStrand, selectedCodeForProg
 
     if (selectedStrand && selectedStrand !== "All Strands") {
       list = list.filter((d) => d.strand === selectedStrand);
+    }
+
+    if (selectedBucket && selectedBucket !== "All Course Buckets") {
+      list = list.filter((d) => getCourseBucket(d.grade) === selectedBucket);
     }
 
     if (q) {
@@ -135,7 +146,7 @@ function useFilteredData(data, query, grade, selectedStrand, selectedCodeForProg
     }
 
     return { list, progression };
-  }, [data, query, grade, selectedStrand, selectedCodeForProgression]);
+  }, [data, query, grade, selectedStrand, selectedBucket, selectedCodeForProgression]);
 }
 
 function App() {
@@ -146,6 +157,7 @@ function App() {
   const [grade, setGrade] = useState(() => params.get("grade") || "All Grades");
   const [query, setQuery] = useState(() => params.get("q") || "");
   const [selectedStrand, setSelectedStrand] = useState(() => params.get("strand") || "All Strands");
+  const [selectedBucket, setSelectedBucket] = useState(() => params.get("bucket") || "All Course Buckets");
   const [selectedCode, setSelectedCode] = useState(() => params.get("code") || null);
   const [progressionInput, setProgressionInput] = useState(() => params.get("code") || "");
   const [expanded, setExpanded] = useState({});
@@ -175,6 +187,7 @@ function App() {
     return uniqueCodes.sort((a, b) => a.localeCompare(b));
   }, [data]);
   const codeSet = useMemo(() => new Set(codeOptions), [codeOptions]);
+  const courseBuckets = ["All Course Buckets", "Elementary K-5", "Middle 6-8", "Lit & Comp I-IV"];
 
   useEffect(() => {
     setProgressionInput(selectedCode || "");
@@ -189,6 +202,9 @@ function App() {
     if (selectedStrand && selectedStrand !== "All Strands") nextParams.set("strand", selectedStrand);
     else nextParams.delete("strand");
 
+    if (selectedBucket && selectedBucket !== "All Course Buckets") nextParams.set("bucket", selectedBucket);
+    else nextParams.delete("bucket");
+
     if (query.trim()) nextParams.set("q", query.trim());
     else nextParams.delete("q");
 
@@ -198,9 +214,9 @@ function App() {
     const next = nextParams.toString();
     const nextUrl = next ? `${window.location.pathname}?${next}` : window.location.pathname;
     window.history.replaceState({}, "", nextUrl);
-  }, [grade, selectedStrand, query, selectedCode]);
+  }, [grade, selectedStrand, selectedBucket, query, selectedCode]);
 
-  const { list, progression } = useFilteredData(data, query, grade, selectedStrand, selectedCode);
+  const { list, progression } = useFilteredData(data, query, grade, selectedStrand, selectedBucket, selectedCode);
 
   const groupedByStrand = useMemo(() => {
     const groups = {};
@@ -236,6 +252,7 @@ function App() {
   const clearFilters = () => {
     setGrade("All Grades");
     setSelectedStrand("All Strands");
+    setSelectedBucket("All Course Buckets");
     setQuery("");
     setSelectedCode(null);
     setProgressionInput("");
@@ -268,7 +285,17 @@ function App() {
 
   useEffect(() => {
     setVisibleByStrand({});
-  }, [grade, selectedStrand, query, data.length]);
+  }, [grade, selectedStrand, selectedBucket, query, data.length]);
+
+  const activeFilters = useMemo(() => {
+    const filters = [];
+    if (grade !== "All Grades") filters.push(`Grade: ${grade}`);
+    if (selectedBucket !== "All Course Buckets") filters.push(`Course Bucket: ${selectedBucket}`);
+    if (selectedStrand !== "All Strands") filters.push(`Strand: ${selectedStrand}`);
+    if (query.trim()) filters.push(`Search: "${query.trim()}"`);
+    if (selectedCode) filters.push(`Progression: ${selectedCode}`);
+    return filters;
+  }, [grade, selectedBucket, selectedStrand, query, selectedCode]);
 
   return (
     <div className="min-h-screen w-full app-shell">
@@ -302,7 +329,7 @@ function App() {
       <section className="mx-auto max-w-6xl px-4 py-4 lg:px-6 print:hidden" aria-labelledby="filters-heading">
         <div className="controls-panel rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
           <h2 id="filters-heading" className="sr-only">Filters and actions</h2>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-6">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-7">
             <div className="md:col-span-2">
               <label htmlFor="search-standards" className="text-xs font-semibold uppercase tracking-wide text-slate-700">Search</label>
               <input
@@ -332,7 +359,21 @@ function App() {
             </div>
 
             <div>
-              <label htmlFor="progression-code" className="text-xs font-semibold uppercase tracking-wide text-slate-700">Progression</label>
+              <label htmlFor="course-bucket-filter" className="text-xs font-semibold uppercase tracking-wide text-slate-700">Course Bucket</label>
+              <select
+                id="course-bucket-filter"
+                value={selectedBucket}
+                onChange={(e) => setSelectedBucket(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100 focus-visible:ring-2 focus-visible:ring-sky-300"
+              >
+                {courseBuckets.map((b) => (
+                  <option key={b} value={b}>{b}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="progression-code" className="text-xs font-semibold uppercase tracking-wide text-slate-700">Find Related Across Grades (by code)</label>
               <input
                 id="progression-code"
                 list="progression-codes"
@@ -355,6 +396,7 @@ function App() {
                 placeholder="Type to find a code..."
                 className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100 focus-visible:ring-2 focus-visible:ring-sky-300"
               />
+              <p className="mt-1 text-[11px] text-slate-600">Type or paste an exact code (for example: <span className="font-mono">3.T.C.1</span>).</p>
               <datalist id="progression-codes">
                 {codeOptions.map((code) => (
                   <option key={code} value={code} />
@@ -395,6 +437,18 @@ function App() {
           </div>
         </div>
       </section>
+
+      {activeFilters.length > 0 && (
+        <section className="mx-auto max-w-6xl px-4 pb-1 lg:px-6 print:hidden" aria-label="Active filters">
+          <div className="flex flex-wrap gap-2">
+            {activeFilters.map((f, i) => (
+              <span key={`${f}-${i}`} className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700">
+                {f}
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
 
       {selectedCode && progression && progression.length > 0 && (
         <section className="mx-auto max-w-6xl px-4 pb-2 lg:px-6" aria-labelledby="progression-heading">
@@ -482,24 +536,27 @@ function App() {
                             </button>
                           </div>
 
-                          <p className="mt-3 text-[15px] leading-relaxed text-slate-800">{d.description}</p>
+                          <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Standard / Expectation</p>
+                          <p className="mt-1 text-[15px] font-semibold leading-relaxed text-slate-800">{d.description}</p>
 
                           {isOpen && (
                             <div className="mt-4 grid grid-cols-1 gap-3">
-                              <DetailBlock label="Details" text={d.details} />
-                              <DetailBlock label="Achievement Level Descriptors" text={d.ALD} />
-                              <DetailBlock label="Evidence Notes" text={d.evidence} />
+                              <ExpandableDetailBlock label="Details" text={d.details} defaultOpen={true} />
+                              <ExpandableDetailBlock label="Achievement Level Descriptors" text={d.ALD} />
+                              <ExpandableDetailBlock label="Evidence Notes" text={d.evidence} />
                               <ResourceBlock resources={d.resources} />
-                              <div className="rounded-xl border border-slate-200 bg-white p-3">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Sample Items</p>
-                                <ul className="mt-1 list-disc pl-5 text-sm leading-relaxed text-slate-800">
+                              <details className="rounded-xl border border-slate-200 bg-white p-3">
+                                <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-slate-700">
+                                  Sample Items
+                                </summary>
+                                <ul className="mt-2 list-disc pl-5 text-sm leading-relaxed text-slate-800">
                                   {Array.isArray(d.samples) && d.samples.length ? (
                                     d.samples.map((s, i) => <li key={i}>{s}</li>)
                                   ) : (
                                     <li>No sample items provided.</li>
                                   )}
                                 </ul>
-                              </div>
+                              </details>
                             </div>
                           )}
                         </article>
@@ -674,15 +731,29 @@ function DetailBlock({ label, text }) {
   );
 }
 
+function ExpandableDetailBlock({ label, text, defaultOpen = false }) {
+  return (
+    <details className="rounded-xl border border-slate-200 bg-white p-3" open={defaultOpen}>
+      <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-slate-700">
+        {label}
+      </summary>
+      <p className="mt-2 text-sm leading-relaxed text-slate-800">{text || "No details provided."}</p>
+    </details>
+  );
+}
+
 function ResourceBlock({ resources }) {
   const [showPaths, setShowPaths] = useState(false);
   if (!Array.isArray(resources) || resources.length === 0) return null;
   const hasPaths = resources.some((r) => !!r.source_path);
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3">
+    <details className="rounded-xl border border-slate-200 bg-white p-3">
+      <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-slate-700">
+        Resource References
+      </summary>
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Resource References</p>
+        <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Source-Linked Guidance</p>
         {hasPaths && (
           <button
             onClick={() => setShowPaths((s) => !s)}
@@ -702,7 +773,7 @@ function ResourceBlock({ resources }) {
           </div>
         ))}
       </div>
-    </div>
+    </details>
   );
 }
 
