@@ -87,7 +87,15 @@ function useFilteredData(data, query, grade, selectedStrand, selectedCodeForProg
     }
 
     if (q) {
-      list = list.filter((d) => [d.code, d.description, d.details, d.strand, d.grade].join(" ").toLowerCase().includes(q));
+      list = list.filter((d) => {
+        const resourceText = Array.isArray(d.resources)
+          ? d.resources.map((r) => [r.source, r.applicability, r.excerpt].join(" ")).join(" ")
+          : "";
+        return [d.code, d.description, d.details, d.strand, d.grade, resourceText]
+          .join(" ")
+          .toLowerCase()
+          .includes(q);
+      });
     }
 
     let progression = null;
@@ -432,6 +440,7 @@ function App() {
                               <DetailBlock label="Details" text={d.details} />
                               <DetailBlock label="Achievement Level Descriptors" text={d.ALD} />
                               <DetailBlock label="Evidence Notes" text={d.evidence} />
+                              <ResourceBlock resources={d.resources} />
                               <div className="rounded-xl border border-slate-200 bg-white p-3">
                                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Sample Items</p>
                                 <ul className="mt-1 list-disc pl-5 text-sm leading-relaxed text-slate-800">
@@ -600,6 +609,26 @@ function DetailBlock({ label, text }) {
     <div className="rounded-xl border border-slate-200 bg-white p-3">
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">{label}</p>
       <p className="mt-1 text-sm leading-relaxed text-slate-800">{text || "No details provided."}</p>
+    </div>
+  );
+}
+
+function ResourceBlock({ resources }) {
+  if (!Array.isArray(resources) || resources.length === 0) return null;
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Resource References</p>
+      <div className="mt-2 grid grid-cols-1 gap-2">
+        {resources.map((r, i) => (
+          <div key={`${r.source || "resource"}-${i}`} className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
+            <p className="text-xs font-semibold text-slate-800">{r.source || "Source Document"}</p>
+            {r.applicability && <p className="mt-1 text-xs text-slate-700">{r.applicability}</p>}
+            {r.excerpt && <p className="mt-1 text-xs text-slate-700">{r.excerpt}</p>}
+            {r.source_path && <p className="mt-1 break-all font-mono text-[11px] text-slate-500">{r.source_path}</p>}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
