@@ -95,6 +95,15 @@ function useFilteredData(data, query, grade, selectedStrand, selectedCodeForProg
       const target = parseCode(selectedCodeForProgression);
       if (target) {
         progression = data.filter((d) => parseCode(d.code)?.progressionKey === target.progressionKey);
+      } else {
+        const selected = data.find((d) => d.code === selectedCodeForProgression);
+        if (selected) {
+          progression = data.filter(
+            (d) =>
+              d.description.trim().toLowerCase() === selected.description.trim().toLowerCase() &&
+              d.strand === selected.strand
+          );
+        }
       }
     }
 
@@ -224,7 +233,7 @@ function App() {
 
   return (
     <div className="min-h-screen w-full app-shell">
-      <a href="#main-content" className="skip-link">Skip to standards list</a>
+      <a href="#main-content" className="skip-link">Skip to expectations list</a>
       <div className="hero-glow" aria-hidden="true" />
 
       <header className="sticky top-0 z-20 border-b border-slate-200/90 bg-white/85 backdrop-blur-md" role="banner">
@@ -266,7 +275,7 @@ function App() {
                 aria-describedby="search-hint"
                 className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-inner shadow-slate-100 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100 focus-visible:ring-2 focus-visible:ring-sky-300"
               />
-              <p id="search-hint" className="sr-only">Type to filter standards. Press slash to focus this search box and Escape to clear search.</p>
+              <p id="search-hint" className="sr-only">Type to filter standards and expectations. Press slash to focus this search box and Escape to clear search.</p>
             </div>
 
             <div>
@@ -339,7 +348,7 @@ function App() {
               <div>
                 <h2 id="progression-heading" className="text-base font-bold text-slate-900">Cross-Grade Progression</h2>
                 <p className="text-sm text-slate-700">
-                  Matching standards for <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">{selectedCode}</span>.
+                  Matching entries for <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">{selectedCode}</span>.
                 </p>
               </div>
               <button onClick={() => setSelectedCode(null)} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-sky-300">Clear progression focus</button>
@@ -362,10 +371,10 @@ function App() {
       )}
 
       <main id="main-content" className="mx-auto max-w-6xl px-4 py-4 lg:px-6 print:px-0" role="main" aria-labelledby="page-title">
-        <p className="sr-only" aria-live="polite">Showing {list.length} standards.</p>
+        <p className="sr-only" aria-live="polite">Showing {list.length} standards and expectations.</p>
         {Object.keys(groupedByStrand).length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-600">
-            No standards match your filters. Try broadening your search or resetting filters.
+            No standards or expectations match your filters. Try broadening your search or resetting filters.
           </div>
         ) : (
           Object.entries(groupedByStrand).map(([strand, items], sectionIndex) => {
@@ -381,7 +390,7 @@ function App() {
                 <div className="mb-3 flex items-center justify-between">
                   <h2 id={strandHeadingId} className="text-lg font-extrabold tracking-tight text-slate-900">{strand}</h2>
                   <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600">
-                    {items.length} standard{items.length !== 1 ? "s" : ""}
+                    {items.length} item{items.length !== 1 ? "s" : ""}
                   </span>
                 </div>
 
