@@ -2,42 +2,61 @@
 const { useMemo, useState, useEffect, useRef } = React;
 
 const STRAND_COLORS = {
-  "Reading Literary": {
-    chip: "bg-rose-100 text-rose-900 border-rose-200",
-    card: "bg-rose-50/80 border-rose-200",
-    accent: "from-rose-200 to-rose-50",
-  },
-  "Reading Informational": {
-    chip: "bg-sky-100 text-sky-900 border-sky-200",
-    card: "bg-sky-50/80 border-sky-200",
-    accent: "from-sky-200 to-sky-50",
-  },
-  Writing: {
-    chip: "bg-amber-100 text-amber-900 border-amber-200",
-    card: "bg-amber-50/80 border-amber-200",
-    accent: "from-amber-200 to-amber-50",
-  },
-  "Speaking & Listening": {
+  Foundations: {
     chip: "bg-emerald-100 text-emerald-900 border-emerald-200",
     card: "bg-emerald-50/80 border-emerald-200",
     accent: "from-emerald-200 to-emerald-50",
+  },
+  Practices: {
+    chip: "bg-amber-100 text-amber-900 border-amber-200",
+    card: "bg-amber-50/80 border-amber-200",
+    accent: "from-amber-200 to-amber-50",
   },
   Language: {
     chip: "bg-indigo-100 text-indigo-900 border-indigo-200",
     card: "bg-indigo-50/80 border-indigo-200",
     accent: "from-indigo-200 to-indigo-50",
   },
+  Texts: {
+    chip: "bg-sky-100 text-sky-900 border-sky-200",
+    card: "bg-sky-50/80 border-sky-200",
+    accent: "from-sky-200 to-sky-50",
+  },
+  "Grade 9 standards": {
+    chip: "bg-rose-100 text-rose-900 border-rose-200",
+    card: "bg-rose-50/80 border-rose-200",
+    accent: "from-rose-200 to-rose-50",
+  },
+  "Grade 10 standards": {
+    chip: "bg-fuchsia-100 text-fuchsia-900 border-fuchsia-200",
+    card: "bg-fuchsia-50/80 border-fuchsia-200",
+    accent: "from-fuchsia-200 to-fuchsia-50",
+  },
+  "Grade 11 standards": {
+    chip: "bg-orange-100 text-orange-900 border-orange-200",
+    card: "bg-orange-50/80 border-orange-200",
+    accent: "from-orange-200 to-orange-50",
+  },
+  "Grade 12 standards": {
+    chip: "bg-teal-100 text-teal-900 border-teal-200",
+    card: "bg-teal-50/80 border-teal-200",
+    accent: "from-teal-200 to-teal-50",
+  },
 };
 
 const STRAND_ORDER = [
-  "Reading Literary",
-  "Reading Informational",
-  "Writing",
-  "Speaking & Listening",
+  "Foundations",
+  "Practices",
   "Language",
+  "Texts",
+  "Grade 9 standards",
+  "Grade 10 standards",
+  "Grade 11 standards",
+  "Grade 12 standards",
 ];
 
 const getGradeNumber = (gradeLabel) => parseInt(String(gradeLabel).match(/\d+/)?.[0] || "0", 10);
+const ITEMS_PER_STRAND = 24;
 
 const parseCode = (code) => {
   const match = String(code).toUpperCase().match(/^ELAGSE\d+([A-Z]+)(\d+)$/);
@@ -89,7 +108,7 @@ function useFilteredData(data, query, grade, selectedStrand, selectedCodeForProg
     if (q) {
       list = list.filter((d) => {
         const resourceText = Array.isArray(d.resources)
-          ? d.resources.map((r) => [r.source, r.applicability, r.excerpt].join(" ")).join(" ")
+          ? d.resources.map((r) => [r.source, r.applicability].join(" ")).join(" ")
           : "";
         return [d.code, d.description, d.details, d.strand, d.grade, resourceText]
           .join(" ")
@@ -128,7 +147,9 @@ function App() {
   const [query, setQuery] = useState(() => params.get("q") || "");
   const [selectedStrand, setSelectedStrand] = useState(() => params.get("strand") || "All Strands");
   const [selectedCode, setSelectedCode] = useState(() => params.get("code") || null);
+  const [progressionInput, setProgressionInput] = useState(() => params.get("code") || "");
   const [expanded, setExpanded] = useState({});
+  const [visibleByStrand, setVisibleByStrand] = useState({});
 
   const grades = useMemo(() => {
     const set = new Set(data.map((d) => d.grade));
@@ -153,6 +174,11 @@ function App() {
     const uniqueCodes = Array.from(new Set(data.map((d) => d.code)));
     return uniqueCodes.sort((a, b) => a.localeCompare(b));
   }, [data]);
+  const codeSet = useMemo(() => new Set(codeOptions), [codeOptions]);
+
+  useEffect(() => {
+    setProgressionInput(selectedCode || "");
+  }, [selectedCode]);
 
   useEffect(() => {
     const nextParams = new URLSearchParams(window.location.search);
@@ -212,6 +238,7 @@ function App() {
     setSelectedStrand("All Strands");
     setQuery("");
     setSelectedCode(null);
+    setProgressionInput("");
   };
 
   const toggleAllVisible = () => {
@@ -238,6 +265,10 @@ function App() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
+
+  useEffect(() => {
+    setVisibleByStrand({});
+  }, [grade, selectedStrand, query, data.length]);
 
   return (
     <div className="min-h-screen w-full app-shell">
@@ -302,17 +333,33 @@ function App() {
 
             <div>
               <label htmlFor="progression-code" className="text-xs font-semibold uppercase tracking-wide text-slate-700">Progression</label>
-              <select
+              <input
                 id="progression-code"
-                value={selectedCode || ""}
-                onChange={(e) => setSelectedCode(e.target.value || null)}
+                list="progression-codes"
+                value={progressionInput}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setProgressionInput(next);
+                  if (!next) {
+                    setSelectedCode(null);
+                  } else if (codeSet.has(next)) {
+                    setSelectedCode(next);
+                  }
+                }}
+                onBlur={() => {
+                  if (!progressionInput) return;
+                  if (!codeSet.has(progressionInput)) {
+                    setProgressionInput(selectedCode || "");
+                  }
+                }}
+                placeholder="Type to find a code..."
                 className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:ring-2 focus:ring-sky-100 focus-visible:ring-2 focus-visible:ring-sky-300"
-              >
-                <option value="">No cross-grade focus</option>
+              />
+              <datalist id="progression-codes">
                 {codeOptions.map((code) => (
-                  <option key={code} value={code}>{code}</option>
+                  <option key={code} value={code} />
                 ))}
-              </select>
+              </datalist>
             </div>
 
             <div className="md:col-span-2">
@@ -388,6 +435,10 @@ function App() {
           Object.entries(groupedByStrand).map(([strand, items], sectionIndex) => {
             const palette = STRAND_COLORS[strand] || { card: "bg-white border-slate-200", accent: "from-slate-200 to-slate-50" };
             const strandHeadingId = `strand-heading-${String(strand).replace(/[^a-z0-9]+/gi, "-").toLowerCase()}`;
+            const visibleCount = visibleByStrand[strand] || ITEMS_PER_STRAND;
+            const sortedItems = items.slice().sort((a, b) => a.code.localeCompare(b.code));
+            const visibleItems = sortedItems.slice(0, visibleCount);
+            const hasMore = sortedItems.length > visibleCount;
             return (
               <section
                 key={strand}
@@ -403,9 +454,7 @@ function App() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                  {items
-                    .slice()
-                    .sort((a, b) => a.code.localeCompare(b.code))
+                  {visibleItems
                     .map((d, cardIndex) => {
                       const expandedKey = `${d.code}::${d.grade}`;
                       const isOpen = !!expanded[expandedKey];
@@ -457,6 +506,18 @@ function App() {
                       );
                     })}
                 </div>
+                {hasMore && (
+                  <div className="mt-3">
+                    <button
+                      onClick={() =>
+                        setVisibleByStrand((prev) => ({ ...prev, [strand]: (prev[strand] || ITEMS_PER_STRAND) + ITEMS_PER_STRAND }))
+                      }
+                      className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-sky-300"
+                    >
+                      Load more ({sortedItems.length - visibleCount} remaining)
+                    </button>
+                  </div>
+                )}
               </section>
             );
           })
@@ -614,18 +675,30 @@ function DetailBlock({ label, text }) {
 }
 
 function ResourceBlock({ resources }) {
+  const [showPaths, setShowPaths] = useState(false);
   if (!Array.isArray(resources) || resources.length === 0) return null;
+  const hasPaths = resources.some((r) => !!r.source_path);
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-3">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Resource References</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Resource References</p>
+        {hasPaths && (
+          <button
+            onClick={() => setShowPaths((s) => !s)}
+            className="rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
+          >
+            {showPaths ? "Hide Paths" : "Show Paths"}
+          </button>
+        )}
+      </div>
       <div className="mt-2 grid grid-cols-1 gap-2">
         {resources.map((r, i) => (
           <div key={`${r.source || "resource"}-${i}`} className="rounded-lg border border-slate-200 bg-slate-50 p-2.5">
             <p className="text-xs font-semibold text-slate-800">{r.source || "Source Document"}</p>
             {r.applicability && <p className="mt-1 text-xs text-slate-700">{r.applicability}</p>}
             {r.excerpt && <p className="mt-1 text-xs text-slate-700">{r.excerpt}</p>}
-            {r.source_path && <p className="mt-1 break-all font-mono text-[11px] text-slate-500">{r.source_path}</p>}
+            {showPaths && r.source_path && <p className="mt-1 break-all font-mono text-[11px] text-slate-500">{r.source_path}</p>}
           </div>
         ))}
       </div>
